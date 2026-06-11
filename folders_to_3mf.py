@@ -1,4 +1,7 @@
 import argparse
+import os
+import shlex
+import shutil
 import struct
 import subprocess
 from datetime import datetime
@@ -15,6 +18,15 @@ ORCA_FLATPAK_COMMAND = [
     "--command=orca-slicer",
     "com.orcaslicer.OrcaSlicer",
 ]
+ORCA_MAC_APP_COMMAND = [
+    "/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer",
+]
+ORCA_WINDOWS_CANDIDATES = [
+    Path(r"C:\Program Files\OrcaSlicer\OrcaSlicer.exe"),
+    Path(r"C:\Program Files\OrcaSlicer\orca-slicer.exe"),
+    Path(r"C:\Program Files (x86)\OrcaSlicer\OrcaSlicer.exe"),
+    Path(r"C:\Program Files (x86)\OrcaSlicer\orca-slicer.exe"),
+]
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_ORCA_SETTINGS = [
     SCRIPT_DIR / "process_preset" / "process.json",
@@ -23,6 +35,47 @@ DEFAULT_ORCA_SETTINGS = [
 DEFAULT_ORCA_FILAMENTS = [
     SCRIPT_DIR / "filament_preset" / "pla.json",
 ]
+
+
+def resolve_orca_command(command_text=None):
+    if command_text:
+        return shlex.split(command_text)
+
+    env_command = os.environ.get("ORCA_SLICER_COMMAND")
+    if env_command:
+        return shlex.split(env_command)
+
+    for candidate in ("orca-slicer", "OrcaSlicer"):
+        resolved = shutil.which(candidate)
+        if resolved:
+            return [resolved]
+
+    if os.name == "nt":
+        windows_roots = [
+            os.environ.get("ProgramFiles"),
+            os.environ.get("ProgramFiles(x86)"),
+        ]
+        for root in windows_roots:
+            if not root:
+                continue
+            for exe_name in ("OrcaSlicer.exe", "orca-slicer.exe"):
+                candidate = Path(root) / "OrcaSlicer" / exe_name
+                if candidate.is_file():
+                    return [str(candidate)]
+        for candidate in ORCA_WINDOWS_CANDIDATES:
+            if candidate.is_file():
+                return [str(candidate)]
+
+    if Path(ORCA_MAC_APP_COMMAND[0]).is_file():
+        return ORCA_MAC_APP_COMMAND[:]
+
+    if shutil.which("flatpak"):
+        return ORCA_FLATPAK_COMMAND[:]
+
+    raise SystemExit(
+        "Could not find OrcaSlicer. Install OrcaSlicer, add it to PATH, "
+        "set ORCA_SLICER_COMMAND, or pass --orca-command."
+    )
 
 
 class Logger:
@@ -179,12 +232,13 @@ def export_3mf(
     settings,
     filaments,
     datadir,
+    orca_command,
 ):
     output_path = folder / output_name
     if output_path.exists() and not overwrite:
         return output_path, "skipped"
 
-    command = ORCA_FLATPAK_COMMAND[:]
+    command = orca_command[:]
     if datadir:
         command += ["--datadir", str(datadir)]
     if settings:
@@ -301,6 +355,14 @@ def main():
         help="OrcaSlicer data directory to use for profiles/settings.",
     )
     parser.add_argument(
+        "--orca-command",
+        default=None,
+        help=(
+            "Exact OrcaSlicer command to run. Example: "
+            "'/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer' on macOS."
+        ),
+    )
+    parser.add_argument(
         "--log-file",
         default=None,
         help="Write console output to this log file too. Default: <root_folder>/folders_to_3mf-<timestamp>.log",
@@ -332,6 +394,7 @@ def main():
         args.orca_settings = existing_paths(DEFAULT_ORCA_SETTINGS)
     if not args.orca_filament:
         args.orca_filament = existing_paths(DEFAULT_ORCA_FILAMENTS)
+    orca_command = resolve_orca_command(args.orca_command)
 
     root = Path(args.root_folder)
     if not root.is_dir():
@@ -352,6 +415,7 @@ def main():
         logger.print(f"Log file: {log_file}")
         logger.print(f"Root folder: {root.resolve()}")
         logger.print(f"Folders to process: {len(folders)}")
+        logger.print(f"Orca command: {shlex.join(orca_command)}")
 
         failures = []
         for folder in folders:
@@ -404,6 +468,7 @@ def main():
                     args.orca_settings,
                     args.orca_filament,
                     args.orca_datadir,
+                    orca_command,
                 )
                 if status == "skipped":
                     logger.print(f"  SKIP 3MF {output_path.name}")

@@ -2,6 +2,218 @@
 
 Utilities for converting DXF outlines into extruded STL files, then optionally packing those STLs into OrcaSlicer 3MF projects with previews.
 
+## Dependencies
+
+### Core Python Requirements
+
+The active DXF-to-STL path uses Python 3 plus these packages:
+
+- `ezdxf`
+- `manifold3d`
+- `trimesh`
+
+Install them with:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install --upgrade pip
+python3 -m pip install ezdxf manifold3d trimesh
+```
+
+Platform-specific examples:
+
+#### Windows
+
+```powershell
+py -3 -m venv .venv
+.venv\Scripts\activate
+py -3 -m pip install --upgrade pip
+py -3 -m pip install ezdxf manifold3d trimesh
+```
+
+#### macOS / Linux
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install --upgrade pip
+python3 -m pip install ezdxf manifold3d trimesh
+```
+
+### 3MF Workflow Requirements
+
+`folders_to_3mf.py` shells out to the OrcaSlicer CLI.
+
+The script tries OrcaSlicer in this order:
+
+- `orca-slicer` on `PATH`
+- `OrcaSlicer` on `PATH`
+- common Windows install paths under `C:\Program Files\OrcaSlicer\`
+- `/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer`
+- Linux Flatpak via `flatpak run --command=orca-slicer com.orcaslicer.OrcaSlicer`
+
+If OrcaSlicer is installed in a nonstandard location, you can override the command with either:
+
+Windows PowerShell:
+
+```powershell
+$env:ORCA_SLICER_COMMAND="C:\path\to\OrcaSlicer.exe"
+```
+
+macOS / Linux:
+
+```bash
+export ORCA_SLICER_COMMAND="/path/to/OrcaSlicer"
+```
+
+Or pass it directly on the command line:
+
+```bash
+python3 folders_to_3mf.py dxf/1 --orca-command "/path/to/OrcaSlicer"
+```
+
+#### Windows
+
+Typical installer location:
+
+```text
+C:\Program Files\OrcaSlicer\OrcaSlicer.exe
+```
+
+Some installs may use:
+
+```text
+C:\Program Files\OrcaSlicer\orca-slicer.exe
+```
+
+If OrcaSlicer is not on `PATH`, run the 3MF workflow with:
+
+```powershell
+py -3 folders_to_3mf.py dxf\1 --orca-command "C:\Program Files\OrcaSlicer\OrcaSlicer.exe"
+```
+
+#### macOS
+
+Typical `.app` location:
+
+```bash
+/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer
+```
+
+The script auto-detects that location. You can verify the CLI is reachable with:
+
+```bash
+"/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer" --help
+```
+
+#### Linux
+
+Common approaches:
+
+- `orca-slicer` on `PATH`
+- AppImage started from the folder where you downloaded it
+- Flatpak:
+
+```bash
+flatpak run --command=orca-slicer com.orcaslicer.OrcaSlicer
+```
+
+If you use Flatpak, install it with:
+
+```bash
+flatpak install flathub com.orcaslicer.OrcaSlicer
+```
+
+If you use an AppImage, a common pattern is:
+
+```bash
+chmod +x OrcaSlicer_*.AppImage
+./OrcaSlicer_*.AppImage --help
+```
+
+In that case, pass the AppImage path explicitly:
+
+```bash
+python3 folders_to_3mf.py dxf/1 --orca-command "/path/to/OrcaSlicer_2.x.x.AppImage"
+```
+
+### Running the Project
+
+#### Windows
+
+DXF to STL:
+
+```powershell
+py -3 batch_convert_dxf_to_stl.py dxf\5
+```
+
+DXF folder to 3MF:
+
+```powershell
+py -3 folders_to_3mf.py dxf\1 --orca-command "C:\Program Files\OrcaSlicer\OrcaSlicer.exe"
+```
+
+#### macOS
+
+DXF to STL:
+
+```bash
+python3 batch_convert_dxf_to_stl.py dxf/5
+```
+
+DXF folder to 3MF:
+
+```bash
+python3 folders_to_3mf.py dxf/1
+```
+
+#### Linux
+
+DXF to STL:
+
+```bash
+python3 batch_convert_dxf_to_stl.py dxf/5
+```
+
+DXF folder to 3MF with Flatpak:
+
+```bash
+python3 folders_to_3mf.py dxf/1
+```
+
+DXF folder to 3MF with AppImage:
+
+```bash
+python3 folders_to_3mf.py dxf/1 --orca-command "/path/to/OrcaSlicer_2.x.x.AppImage"
+```
+
+### Optional Script-Specific Dependencies
+
+These are only needed for the older or standalone helper scripts:
+
+- `convert_dxf_splines_to_stl.py`: `shapely`
+- `repair_stl_pymeshlab.py`: `pymeshlab`
+- `convert_dxf_to_stl.py`: FreeCAD with Python modules `FreeCAD`, `Mesh`, `Part`, and `importDXF`
+
+Install the optional Python packages with:
+
+```bash
+python3 -m pip install shapely pymeshlab
+```
+
+The FreeCAD-based converter is separate from the active workflow and usually requires a FreeCAD installation provided by your OS package manager or the official FreeCAD distribution, not `pip`.
+
+### Quick Install Summary
+
+If you only want the current supported conversion path, install:
+
+```bash
+python3 -m pip install ezdxf manifold3d trimesh
+```
+
+If you also want 3MF export, install the core Python packages above and install OrcaSlicer in a location the script can detect, or pass `--orca-command`.
+
 ## Active Conversion Path
 
 The current batch DXF-to-STL path is:

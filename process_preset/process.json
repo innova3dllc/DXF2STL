@@ -1,0 +1,12 @@
+{
+    "type": "process",
+    "compatible_printers": [
+        "Bambu Lab P1P 0.4 nozzle - Orca",
+        "Bambu Lab P1P 0.4 nozzle"
+    ],
+    "from": "User",
+    "inherits": "0.20mm Standard @BBL P1P",
+    "name": "0.20mm Standard @BBL P1P - Orca",
+    "print_settings_id": "0.20mm Standard @BBL P1P - Orca",
+    "version": "2.1.0.10"
+}

@@ -1,0 +1,16 @@
+# Project data and generated outputs
+dxf/*
+dxf2/*
+stl/*
+stl_batch/
+result.json
+*.log
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+
+# OS-generated junk files
+.DS_Store
+._*
+Thumbs.db
